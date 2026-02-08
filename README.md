@@ -77,8 +77,6 @@ bash make_calibation.sh # Filter and Save Calibration Set
 bash run_co3d.sh # Calibration Training and Evaluation on Co3D
 ```
 
-更详细的版本
-
 ```
 python Quant_VGGT/vggt/evaluation/make_calibation.py \
     --model_path VGGT-1B/model_tracker_fixed_e20.pt \

@@ -1,0 +1,99 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+
+# Logs
+*.log
+logs/
+
+# Output directories
+outputs/
+results/
+runs/
+wandb/
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Gradio
+.gradio/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+*.a
+*.o
+
+# CUDA
+*.cu.o
+*.cuh.gch
+
+# Model weights (通常很大，不应该上传)
+models/
+checkpoints/
+weights/
+*.bin
+*.h5
+*.onnx
+*.trt
+*.engine
+
+# Data
+data/
+datasets/
+*.tfrecord
+*.lmdb
+
+# Misc
+*.bak
+*.orig
+*.rej
