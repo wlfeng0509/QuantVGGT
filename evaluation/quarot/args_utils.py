@@ -55,7 +55,7 @@ class SmoothRotQuantConfig:
  
 
         # Experiments Arguments
-        self.output_dir = "./evaluation/outputs" # Output directory path ⭐
+        self.output_dir = "./outputs" # Output directory path ⭐
         # self.output_dir = "./outputs" # Output directory path ⭐
         self.exp_name = "exp_5b_test"         # Experiment name
         self.cache_dir = None

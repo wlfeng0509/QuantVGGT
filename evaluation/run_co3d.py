@@ -461,7 +461,9 @@ def load_model(device, each_nsamples = 0,min_num_images=0, num_frames=0,category
             abit = int(abit.group(1)) 
         config = get_config() 
         config.update_from_args(wbit=wbit, abit=abit, not_smooth=not_smooth, not_rot=not_rot, lwc=lwc, lac=lac, rv=rv, model_id=model_path, exp_name=exp_name)
-        print(f"wbit:{wbit},abit:{abit},not_rot:{config.not_rot},not_smooth:{config.not_smooth},lwc:{config.lwc},lac:{config.lac},rv:{config.rv}")
+        
+        print(f"W-Bit:{wbit},\tA-Bit:{abit}")
+        print(f"Not_Rot:{config.not_rot},\tNot_Smooth:{config.not_smooth},\tLWC:{config.lwc},\tLAC:{config.lac},\tRV:{config.rv}")
        
         if cache_path is not None:
             cache_path = cache_path
@@ -476,16 +478,16 @@ def load_model(device, each_nsamples = 0,min_num_images=0, num_frames=0,category
             config.update_nsamples(len(calib_data))
         
         elif not os.path.exists(cache_path) and not resume_qs :
-    
+            print(f"⚠️ {cache_path} not exist! Random Select Calibation Data")
             calib_data, calib_data_num = get_simple_calibration_data(device, min_num_images,num_frames,
                                                  co3d_dir,co3d_anno_dir, category, each_nsamples, cache_path=cache_path)
             
             random.shuffle(calib_data)
             config.update_nsamples(calib_data_num)
-            print(f"Get calib data,num = {len(calib_data)} == {config.nsamples}")
+            print(f"⚠️ Get calib data,num = {len(calib_data)}")
         else:
             calib_data = None
-
+        print(f"resume_qs:{resume_qs}")
         quarot_smooth_quant_model(config,model,calib_data, wbit=wbit, abit=abit,
                             resume_qs=resume_qs, use_gptq=use_gptq, resume_gptq=resume_gptq,
                             model_id=model_path, exp_name=exp_name)
@@ -694,7 +696,9 @@ def main():
                         not_smooth=args.not_smooth, not_rot=args.not_rot,lac=args.lac,lwc=args.lwc,rv=args.rv,exp_name=args.exp_name,cache_path=args.cache_path,
                         inspect=args.dump_model_structure, dump_path="model_structure.json" if args.dump_model_structure else None)
 
-    print(SEEN_CATEGORIES)
+    print("✅Evaluation categories:")
+    print(SEEN_CATEGORIES,"\n")
+
     set_random_seeds(args.seed)
 
     per_category_results = {}
@@ -718,8 +722,9 @@ def main():
             seq_names = seq_names[:20]  
         seq_names = sorted(seq_names)
 
+        print(f"✅ Fast_eval:{args.fast_eval}")
         print("Testing Sequences: ")
-        print(seq_names)
+        print(seq_names,"\n")
 
         for seq_name in seq_names:
             seq_data = annotation[seq_name]
@@ -789,8 +794,7 @@ def main():
     mean_AUC_5 = np.mean([per_category_results[category]["Auc_5"] for category in per_category_results])
     mean_AUC_3 = np.mean([per_category_results[category]["Auc_3"] for category in per_category_results])
     print(f"Mean AUC: {mean_AUC_30:.4f} (AUC@30), {mean_AUC_15:.4f} (AUC@15), {mean_AUC_5:.4f} (AUC@5), {mean_AUC_3:.4f} (AUC@3)")
-
-    print("⭐⭐⭐⭐")
+    print("⭐ Evaluation End ！")
     return 
 if __name__ == "__main__":
     main()

@@ -15,7 +15,6 @@ from datetime import datetime
 import glob
 import gc
 import time
-
 # sys.path.append(os.path.dirname(os.path.abspath(__file__)) )
 
 from visual_util import predictions_to_glb
@@ -29,37 +28,70 @@ from vggt.utils.load_fn import load_and_preprocess_images
 from evaluation.quarot.utils import quarot_smooth_quant_model, set_ignore_quantize,load_qs_parameters
 from evaluation.quarot.args_utils import get_config
 from evaluation.quarot.utils import after_resume_qs
+import argparse
 
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
-def load_quant_vggt(device):
-    print(f"Using device: {device}") 
-    model_id = "/data2/fwl/VGGT_quant/VGGT-1B/model_tracker_fixed_e20.pt"
+def get_args_parser():
+    """Set up command-line arguments for the CO3D evaluation script."""
+    parser = argparse.ArgumentParser(description='Demo')
+    parser.add_argument('--device', type=str, default="cpu", help='Device')
+    parser.add_argument('--model_path', type=str, required=True, help='Path to the VGGT model checkpoint')
+    parser.add_argument('--not_smooth', action='store_true', help='Disable smooth (enabled by default)')
+    parser.add_argument('--not_rot', action='store_true', help='Disable rot (enabled by default)')
+    parser.add_argument('--lwc', action='store_true', help='Use lwc')
+    parser.add_argument('--lac', action='store_true', help='Use lac')
+    parser.add_argument('--rv', action='store_true', help='Use rv')
+    parser.add_argument('--dtype', type=str, default='quarot_w4a4', help='Data type for model inference')
+    parser.add_argument('--exp_name', type=str, default=None, help='Experiment name')
+
+    return parser
+
+def load_quant_vggt(args):
+    print(f"Using device: {args.device}") 
+    model_id = args.model_path
     model = VGGT()
     model.load_state_dict(torch.load(model_id))
     model.eval()
     model.to(device)
 
-    exp_name = "quant_w4a4"
-    config.exp_dir  = "./evaluation/outputs/w4a4/quant_w4a4_model_tracker_fixed_e20.pt_sym"
-    calib_path = "./evaluation/outputs/cache_data.pt"
-    config = get_config() 
+    dtype = args.dtype
+    if dtype in ["quarot_w4a4","quarot_w6a6","quarot_w8a8"]:
+        import re
+        wbit = re.search(r'w(\d+)', dtype)
+        abit = re.search(r'a(\d+)', dtype)
+
+        if wbit:
+            wbit = int(wbit.group(1)) 
+        if abit:
+            abit = int(abit.group(1)) 
+     
+    if dtype in ["fp16"]:
+        model.to(device)
+        print(f"⚠️ Loading Raw VGGT Model")
+        return model
     
-    calib_data = torch.load(calib_path)
-    config.update_nsamples(len(calib_data))
-    config.update_from_args(wbit=4, abit=4, not_smooth=False, not_rot=False, lwc=True, lac=True, rv=True, model_id=model_id , exp_name=exp_name)
-    quarot_smooth_quant_model(config,model,calib_data, wbit=4, abit=4,
-                        resume_qs=True, exp_name=exp_name)
+    config = get_config() 
+    config.update_from_args(wbit=wbit, abit=abit, not_smooth=args.not_smooth, not_rot=args.not_rot, lwc=args.lwc, lac=args.lac, rv=args.rv, model_id=model_id , exp_name=args.exp_name)
+    output_dir = "./evaluation/outputs/"
+    config.exp_dir  = os.path.join(output_dir,  
+                                   f"w{wbit}a{abit}", f"{args.exp_name}_model_tracker_fixed_e20.pt_sym")
+    quarot_smooth_quant_model(config,model,calib_data = None, wbit=wbit, abit=wbit,
+                        resume_qs=True, exp_name=args.exp_name)
     model.to(device)
+    print(f"✅ Loading Model_id '{args.exp_name}' with '{args.dtype}'")
     return model
 
+
+parser = get_args_parser()
+args = parser.parse_args()
+device = args.device
 print("Initializing and loading VGGT model...")
-model = load_quant_vggt(device).eval()
+
+model = load_quant_vggt(args).eval()
 model.to(device)
 print(device)
 model.eval()
-
 
 
 # -------------------------------------------------------------------------
