@@ -188,7 +188,7 @@ python run_7andN.py \
 
 Also, you can use the quantized model for predicting other 3D attributes following the guidance [here](https://github.com/facebookresearch/vggt/tree/evaluation#detailed-usage).
 
-If you are confused about the above parameters, please refer to the detailed instructions [Parameter Details](https://github.com/wlfeng0509/QuantVGGT/blob/main/docs/Parameter Details.md)
+If you are confused about the above parameters, please refer to the detailed instructions [Parameter Details](https://github.com/wlfeng0509/QuantVGGT/blob/main/docs/Parameter_Details.md)
 
 ## 🥸 Comments
 
