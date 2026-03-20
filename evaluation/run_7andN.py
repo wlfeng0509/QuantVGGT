@@ -2,7 +2,6 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) 
-print(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) 
 
 import time
 import torch
@@ -46,7 +45,7 @@ def get_args_parser():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="/data2/wmq/FastVGGT/eval_results",
+        default="/data/wmq/QuantVGGT/eval_results",
         help="value for outdir",
     )
     parser.add_argument("--size", type=int, default=518)
@@ -55,25 +54,26 @@ def get_args_parser():
     parser.add_argument("--use_proj", action="store_true")
     parser.add_argument("--kf", type=int, default=2, help="key frame")
     parser.add_argument('--dataset', type=str, default='7s', help='Dataset type: 7s or nr')
+    parser.add_argument('--dataset_path', type=str, default="Null", help='Dataset path for 7s or nr')
 
-    parser.add_argument('--class_mode', type=str, default='all', help='Enable debug mode (only test on specific category)')
+    parser.add_argument('--class_mode', type=str, default='all', help='Only for the categories when selecting CO3D as the calibration set')
     parser.add_argument('--use_ba', action='store_true', default=False, help='Enable bundle adjustment')
     parser.add_argument('--min_num_images', type=int, default=50, help='Minimum number of images for a sequence')
     parser.add_argument('--num_frames', type=int, default=10, help='Number of frames to use')
-    parser.add_argument('--co3d_dir', type=str, required=True, help='Path to CO3D dataset')
-    parser.add_argument('--co3d_anno_dir', type=str, required=True, help='Path to CO3D annotations')
+    parser.add_argument('--co3d_dir', type=str, required=True, help='Path to CO3D dataset as the calibration set')
+    parser.add_argument('--co3d_anno_dir', type=str, required=True, help='Path to CO3D annotations as the calibration set')
     parser.add_argument('--seed', type=int, default=0, help='Random seed for reproducibility')
     parser.add_argument('--model_path', type=str, required=True, help='Path to the VGGT model checkpoint')
 
     parser.add_argument('--dtype', type=str, default='quarot_w6a6', help='Data type for model inference')
-    parser.add_argument('--each_nsamples', type=int, default=2, help='Number of samples to select per class')
+    parser.add_argument('--each_nsamples', type=int, default=2, help='Number of samples to select per classb when calibration')
     parser.add_argument('--not_smooth', action='store_true', help='Disable smooth (enabled by default)')
     parser.add_argument('--not_rot', action='store_true', help='Disable rot (enabled by default)')
     parser.add_argument('--lwc', action='store_true', help='Use lwc')
     parser.add_argument('--lac', action='store_true', help='Use lac')
     parser.add_argument('--rv', action='store_true', help='Use rv')
-    parser.add_argument('--exp_name', type=str, default=None, help='Experiment name')
-    parser.add_argument('--cache_path', type=str, default=None, help='Load prepared calibration set; will be created automatically if not provided')
+    parser.add_argument('--exp_name', type=str, default="TEST", help='Experiment name')
+    parser.add_argument('--cache_path', type=str, default=None, help='Load prepared calibration set; will be created a simple one automatically if not provided')
 
     parser.add_argument('--resume_qs', action='store_true', default=False, help='Load quantized model corresponding to exp_name')
 
@@ -466,11 +466,11 @@ def load_model(device, each_nsamples = 0,min_num_images=0, num_frames=0,category
     calib_data = None
     if dtype in['raw']:
         if os.path.exists(cache_path):
-            print(f"Calib_data is exist: {cache_path}")
+            print(f"✅ Calib_data is exist: {cache_path}")
             calib_data = torch.load(cache_path)
 
         elif not os.path.exists(cache_path):
-            print(f" Calib_data not exist")
+            print(f"⚠️ {cache_path} not exist! Random Select Calibation Data")
             calib_data, calib_data_num = get_simple_calibration_data(device, min_num_images,num_frames,
                                                 co3d_dir,co3d_anno_dir, category, each_nsamples, cache_path=cache_path)
 
@@ -490,7 +490,9 @@ def load_model(device, each_nsamples = 0,min_num_images=0, num_frames=0,category
 
         config = get_config() 
         config.update_from_args(wbit=wbit, abit=abit, not_smooth=not_smooth, not_rot=not_rot, lwc=lwc, lac=lac, rv=rv, model_id=model_path, exp_name=exp_name)
-        print(f"Info:wbit:{wbit},abit:{abit},not_rot:{config.not_rot},not_smooth:{config.not_smooth},lwc:{config.lwc},lac:{config.lac},rv:{config.rv}")
+        
+        print(f"W-Bit:{wbit},\tA-Bit:{abit}")
+        print(f"Not_Rot:{config.not_rot},\tNot_Smooth:{config.not_smooth},\tLWC:{config.lwc},\tLAC:{config.lac},\tRV:{config.rv}")
        
         if cache_path is not None:
             cache_path = cache_path
@@ -506,12 +508,12 @@ def load_model(device, each_nsamples = 0,min_num_images=0, num_frames=0,category
             config.update_nsamples(len(calib_data))
         
         elif not os.path.exists(cache_path) and not resume_qs :
-            print(f"Calib data not exist,{each_nsamples}")
+            print(f"⚠️ {cache_path} not exist! Random Select Calibation Data")
             calib_data, calib_data_num = get_simple_calibration_data(device, min_num_images,num_frames,
                                                  co3d_dir,co3d_anno_dir, category, each_nsamples, cache_path=cache_path)
          
             config.update_nsamples(calib_data_num)
-            print(f"nsamples = {len(calib_data)} == {config.nsamples}")
+            print(f"⚠️ Calibation nums = {len(calib_data)} ")
         else:
             calib_data = None
 
@@ -549,7 +551,7 @@ def main(args):
         datasets_all = {
             "7scenes": SevenScenes(
                 split="test",
-                ROOT = "7-Scenes/data",
+                ROOT = args.dataset_path,
                 resolution=resolution,
                 num_seq=1,
                 full_video=True,
@@ -560,7 +562,7 @@ def main(args):
         datasets_all = {
             "NRGBD": NRGBD(
             split="test",
-            ROOT="neural_rgbd_data",
+            ROOT=args.dataset_path,
             resolution=resolution,
             num_seq=1,
             full_video=True,
@@ -589,7 +591,7 @@ def main(args):
 
 
     model , _ = load_model(device,args.each_nsamples,
-                        min_num_images =args.min_num_images, num_frames =  args.num_frames,category =SEEN_CATEGORIES,co3d_anno_dir = args.co3d_anno_dir,co3d_dir = args.co3d_dir, # 这两个参数用于calib_data
+                        min_num_images =args.min_num_images, num_frames =  args.num_frames,category =SEEN_CATEGORIES,co3d_anno_dir = args.co3d_anno_dir,co3d_dir = args.co3d_dir, 
                             model_path=args.model_path, dtype=args.dtype,
                             compile= False ,fuse_qkv= False,
                             resume_qs=args.resume_qs, use_gptq= False,
@@ -609,7 +611,9 @@ def main(args):
     # evaluation
     output_path = osp.join(args.output_dir, f"{args.kf}")
     os.makedirs(output_path, exist_ok=True)
-    print("Result path",output_path)
+    print("-----------------------")
+    print("✅ Evaluation Start! ")
+    print("✅ Result path:",output_path)
     criterion = Regr3D_t_ScaleShiftInv(L21, norm_mode=False, gt_scale=True)
     with torch.no_grad():
         for name_data, dataset in datasets_all.items():
@@ -962,7 +966,8 @@ def main(args):
                 )
 
                 f.write(to_write + time_block + print_str)
-
+            print(f"✅ Evaluation End ,save in {log_file}")
+            print("-----------------------------------")
 
 from collections import defaultdict
 import re
@@ -984,7 +989,6 @@ regex = re.compile(pattern, re.VERBOSE)
 
 if __name__ == "__main__":
     parser = get_args_parser()
-    print(1)
     args = parser.parse_args()
 
     main(args)

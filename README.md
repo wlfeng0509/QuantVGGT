@@ -19,9 +19,15 @@ Weilun Feng1,2∗, Haotong Qin3∗, Mingqiang Wu1,2∗, Chuanguang Yang1†, Yuq
 
 </div>
 
-<sup>*</sup>Equal Contribution  <sup>†</sup>Corresponding Author
+<sup>*</sup>Equal Contribution  <sup>†</sup>Corresponding Author，
 
-1.Institute of Computing Technology, Chinese Academy of Sciences, 2.University of Chinese Academy of Sciences,3.ETH Z¨ urich, 4.Shanghai Jiao Tong University
+1.Institute of Computing Technology, Chinese Academy of Sciences，
+
+2.University of Chinese Academy of Sciences，
+
+3.ETH Z¨ urich,
+
+4.Shanghai Jiao Tong University
 
 </div>
 
@@ -33,6 +39,7 @@ Weilun Feng1,2∗, Haotong Qin3∗, Mingqiang Wu1,2∗, Chuanguang Yang1†, Yuq
 
 ## 🚀 Updates
 
+- **[2026.03.20]** 😉Added Gradio demo script for web-based online execution, supplemented the missing eval directory, and fixed known bugs.
 - **[2026.02.09]** 😉The calibration dataset and quantized weights have been updated in the Hugging Face repository. Please [check](https://huggingface.co/wlfeng/QuantVGGT).
 - **[2026.02.08]** 🎉Code for calibration training, evaluation on the 7-Scene and NRGBD datasets, and calibration set selection is now available.
 - **[2025.10.10]** 🎉Evaluation code for reproducing our camera pose estimation results on Co3D is now available.
@@ -70,79 +77,124 @@ Then download the pre trained W4A4 quantization parameters from [huggingface](ht
 
 Then download the calibration set from [huggingface](https://huggingface.co/wlfeng/QuantVGGT/tree/main) and place the downloaded folder under ***evaluation\outputs*** branch.
 
+## 🤖 Online Demo [NEW]
+
+If the quantized weights come from our repository [huggingface](https://huggingface.co/wlfeng/QuantVGGT/tree/main), please run directly:
+
+```
+bash /demo_gradio.sh
+```
+
+Otherwise, modify `exp_name` and `dtype` to the names you specified, then run.
+
+```
+python demo_gradio.py\
+    --device "cuda:0" \
+    --model_path ./VGGT-1B/model_tracker_fixed_e20.pt \
+    --lwc \
+    --lac \
+    --exp_name YOUR_NAME \
+    --dtype YOUR_BITS\
+```
+
 ## 📊 Quick start
 
 We can now use the provided script for inference **(remember to change the data path within the script)**.
 
+**[1-1 simple] Filter and Save Co3d Calibration Set**
+
 ```
 cd evaluation
-bash make_calibation.sh # Filter and Save Calibration Set
-bash run_co3d.sh # Calibration Training and Evaluation on Co3D
+bash make_calibation.sh 
 ```
 
-**Generate filtered Co3d calibration data**
+**[1-2 detailed] Filter and Save Co3d Calibration Set**
+
+If `cache_path` is missing, it will automatically build `class_mode * each_nsamples` as the source dataset.
 
 ```
-python Quant_VGGT/vggt/evaluation/make_calibation.py \
-    --model_path VGGT-1B/model_tracker_fixed_e20.pt \
-    --co3d_dir co3d_datasets/ \
-    --co3d_anno_dir co3d_v2_annotations/ \
+python make_calibation.py \
+    --model_path ../VGGT-1B/model_tracker_fixed_e20.pt \
+    --co3d_dir /data1/3d_datasets/ \
+    --co3d_anno_dir /data2/fwl/datasets/co3d_v2_annotations/ \
     --seed 0 \
-    --cache_path all_calib_data.pt \ # Data to be filtered for calibration set
-    --save_path calib_data.pt \ # Save path for calibration set
-    --class_mode all \  # Category selection mode for calibration data
-    --kmeans_n 6 \ # Number of cluster centers
-    --kmeans_m 7 \  # Number of samples per category
+    --cache_path outputs/source_calib_data.pt \  # Path to the source dataset
+    --save_path outputs/total_20_calib_data.pt \ # Path to the filtered calibration dataset
+    --class_mode all \                           # Type of classes for building the source dataset
+    --each_nsamples 10 \                         # Number of samples per class for building the source dataset
+    --kmeans_n 5 \                               # Number of cluster centers for the calibration dataset
+    --kmeans_m 4 \                               # Number of samples per cluster for the calibration dataset
 ```
 
-**Quantize calibrate and evaluate on Co3d.**
+**[2-1 simple] Quantize calibrate and evaluate on Co3d.**
+
+If the quantized weights and calibration set weights come from our repository [huggingface](https://huggingface.co/wlfeng/QuantVGGT/tree/main), please run:
 
 ```
-python Quant_VGGT/vggt/evaluation/run_co3d.py \
-    --model_path Quant_VGGT/VGGT-1B/model_tracker_fixed_e20.pt \
-    --co3d_dir co3d_datasets/ \
+bash run_co3d.sh
+```
+
+**[2-2 detailed] Quantize calibrate and evaluate on Co3d.**
+
+```
+python run_co3d.py \
+    --model_path ../VGGT-1B/model_tracker_fixed_e20.pt \ # Path to original VGGT
+    --co3d_dir 3d_datasets/ \
     --co3d_anno_dir co3d_v2_annotations/ \
-    --dtype quarot_w4a4\	# Quantization Bit Width
+    --dtype quarot_w4a4 \
     --seed 0 \
-    --lac \ 
+    --lac \
     --lwc \
-    --cache_path calib_data.pt \ # calibration data path
-    --class_mode all \	# Category selection mode for calibration data
-    --exp_name a44_uqant \	
-    --resume_qs \ # Load quantized model from exp_name
+    --cache_path ./outputs/cache_data.pt \ # Filtered calibration dataset
+    --class_mode all \                     # Number of classes in the default calibration dataset
+    --each_nsamples 10 \                   # Number of samples per class in the default calibration dataset
+    --exp_name a44 \
+    --fast_eval \                          # Only evaluate the first 20 samples per class
+    --resume_qs                            # Load existing weights for exp_name
 ```
 
-**Quantize calibrate on Co3d, evaluate on 7 scenes or NRGBD dataset.**
+**[3] Quantize calibrate on Co3d, evaluate on 7 scenes or NRGBD dataset.**
+
+Please download the 7 Scenes and NRGBD datasets, then modify the path of `dataset_path`.
 
 ```
-python Quant_VGGT/vggt/evaluation/run_7andN.py\
-  --model_path Quant_VGGT/VGGT-1B/model_tracker_fixed_e20.pt \
-  --co3d_dir co3d_datasets/ \
-  --co3d_anno_dir co3d_v2_annotations/ \
-  --dtype quarot_w4a4\
-  --lwc \
-  --lac \
-  --exp_name quant_w4a4\
-  --cache_path calib_data.pt \
-  --class_mode all \
-  --output_dir "Quant_VGGT/vggt/eval_results" \
-  --kf 100 \ # Sample every keyframe.
-  --dataset nr \ # evaluation 7s or nr dataset
+bash run_7s.sh
 ```
 
+```
+bash run_nr.sh
+```
 
+Or
 
-
+```
+python run_7andN.py \
+    --model_path ../VGGT-1B/model_tracker_fixed_e20.pt \
+    --co3d_dir 3d_datasets/ \
+    --co3d_anno_dir co3d_v2_annotations/ \
+    --class_mode all \
+    --each_nsamples 10 \
+    --dtype quarot_w4a4 \
+    --lwc \
+    --lac \
+    --cache_path ./outputs/cache_data.pt \
+    --output_dir "./eval_results" \
+    --kf 100 \                     # Frame sampling interval
+    --dataset 7s \                 # Evaluate 7-Scenes or NRGBD dataset
+    --dataset_path 7-Scenes/data \ # Path to 7-Scenes or NRGBD dataset
+    --exp_name a44 \
+    --resume_qs
+```
 
 Also, you can use the quantized model for predicting other 3D attributes following the guidance [here](https://github.com/facebookresearch/vggt/tree/evaluation#detailed-usage).
 
+If you are confused about the above parameters, please refer to the detailed instructions [Parameter Details](/docs/Parameter Details)./docs/Parameter Details)
 
-
-## Comments
+## 🥸 Comments
 
 * Our codebase is heavily builds on [VGGT](https://github.com/facebookresearch/vggt) and [QuaRot](https://github.com/spcl/QuaRot). Thanks for open-sourcing!
 
-## BibTeX
+## 😍 BibTeX
 
 If you find *QuantVGGT* is useful and helpful to your work, please kindly cite this paper:
 
@@ -155,3 +207,11 @@ If you find *QuantVGGT* is useful and helpful to your work, please kindly cite t
 }
 ```
 
+## 📧Contact
+
+For questions or suggestions, please open an issue or contact:
+
+- Weilun Feng: [fengweilun24s@ict.ac.cn](https://github.com/wlfeng0509/Fast-SAM3D/blob/main/fengweilun24s@ict.ac.cn)
+- Mingqiang Wu [wumingqiang25e@ict.ac.cn](mailto:wumingqiang25e@ict.ac.cn)
+- Chuanguang Yang: [yangchuanguang@ict.ac.cn](mailto:yangchuanguang@ict.ac.cn)
+- Zhulin An: [anzhulin@ict.ac.cn](mailto:anzhulin@ict.ac.cn)
